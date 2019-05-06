@@ -37,6 +37,10 @@ exec /usr/local/bin/sidecar --connect /var/shared/sock --workdir "$(pwd)" -- pro
 
 ## Implementation
 
+### Diagram
+
+![interaction](./docs/sidecar-interaction.svg)
+
 ### Server
     1. creates SOCK_SEQPACKET unix domain socket on the shared volume and waits for connections
     2. expects [argv, env, cwd] request from the client as well as 3 standard stream descriptors

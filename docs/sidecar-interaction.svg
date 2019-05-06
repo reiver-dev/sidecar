@@ -1,0 +1,219 @@
+<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="829" height="829">
+  <defs/>
+  <g>
+    <g/>
+    <g/>
+    <g/>
+    <g/>
+    <g/>
+    <g/>
+    <g/>
+    <g/>
+    <g/>
+    <g/>
+    <g/>
+    <g/>
+    <g/>
+    <g/>
+    <g/>
+    <g/>
+    <g/>
+    <g/>
+    <g>
+      <rect fill="white" stroke="none" x="0" y="0" width="829" height="829"/>
+    </g>
+    <g>
+      <g>
+        <path fill="lightgrey" stroke="black" paint-order="fill stroke markers" d=" M 7.539324600000004 8.821009781999997 L 328.44803274599997 8.821009781999997 L 328.44803274599997 797.811329172 L 7.539324600000004 797.811329172 L 7.539324600000004 8.821009781999997" stroke-miterlimit="10" stroke-width="1.2565541" stroke-dasharray=""/>
+      </g>
+      <g>
+        <text fill="black" stroke="none" font-family="monospaced" font-size="10pt" font-style="normal" font-weight="normal" text-decoration="normal" x="145.49367867299998" y="29.931118662" text-anchor="start" dominant-baseline="alphabetic">Sidecar</text>
+      </g>
+      <g>
+        <path fill="lightgrey" stroke="black" paint-order="fill stroke markers" d=" M 487.7581049639999 8.821009781999997 L 821.6668131099999 8.821009781999997 L 821.6668131099999 797.811329172 L 487.7581049639999 797.811329172 L 487.7581049639999 8.821009781999997" stroke-miterlimit="10" stroke-width="1.2565541" stroke-dasharray=""/>
+      </g>
+      <g>
+        <text fill="black" stroke="none" font-family="monospaced" font-size="10pt" font-style="normal" font-weight="normal" text-decoration="normal" x="608.7124590369999" y="29.931118662" text-anchor="start" dominant-baseline="alphabetic">Implementation</text>
+      </g>
+    </g>
+    <g>
+      <path fill="none" stroke="black" paint-order="fill stroke markers" d=" M 45.438983582000006 85.495940964 L 45.438983582000006 829.476492492" stroke-miterlimit="10" stroke-width="1.2565541" stroke-dasharray="11.598960923076923,5.0262164"/>
+      <path fill="none" stroke="black" paint-order="fill stroke markers" d=" M 288.04837376399996 158.92896256800003 L 288.04837376399996 776.701220292" stroke-miterlimit="10" stroke-width="1.2565541" stroke-dasharray="11.598960923076923,5.0262164"/>
+      <path fill="none" stroke="black" paint-order="fill stroke markers" d=" M 530.6577639459999 85.495940964 L 530.6577639459999 829.476492492" stroke-miterlimit="10" stroke-width="1.2565541" stroke-dasharray="11.598960923076923,5.0262164"/>
+      <path fill="none" stroke="black" paint-order="fill stroke markers" d=" M 773.2671541279999 309.263095092 L 773.2671541279999 692.2607847720001" stroke-miterlimit="10" stroke-width="1.2565541" stroke-dasharray="11.598960923076923,5.0262164"/>
+    </g>
+    <g>
+      <path fill="none" stroke="none"/>
+      <g>
+        <path fill="white" stroke="black" paint-order="fill stroke markers" d=" M 15.078649200000005 44.783588124 L 75.79931796400001 44.783588124 L 75.79931796400001 85.495940964 L 15.078649200000005 85.495940964 L 15.078649200000005 44.783588124 Z" stroke-miterlimit="10" stroke-width="2.4125838720000004" stroke-dasharray=""/>
+      </g>
+      <g>
+        <g/>
+        <text fill="black" stroke="none" font-family="monospaced" font-size="10pt" font-style="normal" font-weight="normal" text-decoration="normal" x="31.438983582000006" y="70.41729176400001" text-anchor="start" dominant-baseline="alphabetic">Shell</text>
+      </g>
+      <path fill="none" stroke="none"/>
+      <g>
+        <path fill="white" stroke="black" paint-order="fill stroke markers" d=" M 495.2974295639999 44.783588124 L 566.018098328 44.783588124 L 566.018098328 85.495940964 L 495.2974295639999 85.495940964 L 495.2974295639999 44.783588124 Z" stroke-miterlimit="10" stroke-width="2.4125838720000004" stroke-dasharray=""/>
+      </g>
+      <g>
+        <g/>
+        <text fill="black" stroke="none" font-family="monospaced" font-size="10pt" font-style="normal" font-weight="normal" text-decoration="normal" x="511.65776394599993" y="70.41729176400001" text-anchor="start" dominant-baseline="alphabetic">Server</text>
+      </g>
+    </g>
+    <g>
+      <path fill="white" stroke="black" paint-order="fill stroke markers" d=" M 523.118439346 201.14918032800003 L 538.1970885459999 201.14918032800003 L 538.1970885459999 692.2607847720001 L 523.118439346 692.2607847720001 L 523.118439346 201.14918032800003" stroke-miterlimit="10" stroke-width="1.2565541" stroke-dasharray=""/>
+      <path fill="white" stroke="black" paint-order="fill stroke markers" d=" M 280.509049164 393.70353061200007 L 295.58769836399995 393.70353061200007 L 295.58769836399995 734.481002532 L 280.509049164 734.481002532 L 280.509049164 393.70353061200007" stroke-miterlimit="10" stroke-width="1.2565541" stroke-dasharray=""/>
+      <path fill="none" stroke="none"/>
+      <g>
+        <path fill="white" stroke="black" paint-order="fill stroke markers" d=" M 255.18803938199997 116.93492454600003 L 320.908708146 116.93492454600003 L 320.908708146 157.64727738600004 L 255.18803938199997 157.64727738600004 L 255.18803938199997 116.93492454600003 Z" stroke-miterlimit="10" stroke-width="2.4125838720000004" stroke-dasharray=""/>
+      </g>
+      <g>
+        <g/>
+        <text fill="black" stroke="none" font-family="monospaced" font-size="10pt" font-style="normal" font-weight="normal" text-decoration="normal" x="271.54837376399996" y="142.56862818600004" text-anchor="start" dominant-baseline="alphabetic">Client</text>
+      </g>
+      <g>
+        <text fill="black" stroke="none" font-family="monospaced" font-size="10pt" font-style="normal" font-weight="normal" text-decoration="normal" x="69.31351148199997" y="131.25964128600003" text-anchor="start" dominant-baseline="alphabetic">Spawn&#xA0;with&#xA0;FDS&#xA0;[in,&#xA0;out,&#xA0;err]</text>
+      </g>
+      <g>
+        <path fill="none" stroke="black" paint-order="fill stroke markers" d=" M 45.438983582000006 137.29110096600004 L 252.67493118199997 137.29110096600004" stroke-miterlimit="10" stroke-width="1.2565541" stroke-dasharray=""/>
+        <g transform="translate(255.18803938199997,137.29110096600004) translate(-255.18803938199997,-137.29110096600004)">
+          <path fill="black" stroke="none" paint-order="stroke fill markers" d=" M 242.62249838199997 131.00833046600005 L 255.18803938199997 137.29110096600004 L 242.62249838199997 143.57387146600004 Z"/>
+        </g>
+      </g>
+      <g>
+        <text fill="black" stroke="none" font-family="monospaced" font-size="10pt" font-style="normal" font-weight="normal" text-decoration="normal" x="382.08340655499995" y="195.11772064800002" text-anchor="start" dominant-baseline="alphabetic">connect</text>
+      </g>
+      <g>
+        <path fill="none" stroke="black" paint-order="fill stroke markers" d=" M 288.04837376399996 201.14918032800003 L 520.6053311459999 201.14918032800003" stroke-miterlimit="10" stroke-width="1.2565541" stroke-dasharray=""/>
+        <g transform="translate(523.118439346,201.14918032800003) translate(-523.118439346,-201.14918032800003)">
+          <path fill="black" stroke="none" paint-order="stroke fill markers" d=" M 510.55289834599995 194.86640982800003 L 523.118439346 201.14918032800003 L 510.55289834599995 207.43195082800003 Z"/>
+        </g>
+      </g>
+      <g>
+        <text fill="black" stroke="none" font-family="monospaced" font-size="10pt" font-style="normal" font-weight="normal" text-decoration="normal" x="350.08340655499995" y="237.337938408" text-anchor="start" dominant-baseline="alphabetic">[argv,&#xA0;cwd&#xA0;env,&#xA0;fds]</text>
+      </g>
+      <g>
+        <path fill="none" stroke="black" paint-order="fill stroke markers" d=" M 288.04837376399996 243.36939808800003 L 520.6053311459999 243.36939808800003" stroke-miterlimit="10" stroke-width="1.2565541" stroke-dasharray=""/>
+        <g transform="translate(523.118439346,243.36939808800003) translate(-523.118439346,-243.36939808800003)">
+          <path fill="black" stroke="none" paint-order="stroke fill markers" d=" M 510.55289834599995 237.08662758800003 L 523.118439346 243.36939808800003 L 510.55289834599995 249.65216858800002 Z"/>
+        </g>
+      </g>
+      <path fill="none" stroke="none"/>
+      <g>
+        <path fill="white" stroke="black" paint-order="fill stroke markers" d=" M 732.4068197459999 267.26905707000003 L 814.1274885099999 267.26905707000003 L 814.1274885099999 307.98140991 L 732.4068197459999 307.98140991 L 732.4068197459999 267.26905707000003 Z" stroke-miterlimit="10" stroke-width="2.4125838720000004" stroke-dasharray=""/>
+      </g>
+      <g>
+        <g/>
+        <text fill="black" stroke="none" font-family="monospaced" font-size="10pt" font-style="normal" font-weight="normal" text-decoration="normal" x="748.7671541279999" y="292.9027607100001" text-anchor="start" dominant-baseline="alphabetic">Process</text>
+      </g>
+      <g>
+        <text fill="black" stroke="none" font-family="monospaced" font-size="10pt" font-style="normal" font-weight="normal" text-decoration="normal" x="616.3019541459998" y="281.59377381" text-anchor="start" dominant-baseline="alphabetic">spawn</text>
+      </g>
+      <g>
+        <path fill="none" stroke="black" paint-order="fill stroke markers" d=" M 538.1970885459999 287.62523349 L 729.8937115459998 287.62523349" stroke-miterlimit="10" stroke-width="1.2565541" stroke-dasharray=""/>
+        <g transform="translate(732.4068197459999,287.62523349) translate(-732.4068197459999,-287.62523349)">
+          <path fill="black" stroke="none" paint-order="stroke fill markers" d=" M 719.8412787459998 281.34246299 L 732.4068197459999 287.62523349 L 719.8412787459998 293.90800399000005 Z"/>
+        </g>
+      </g>
+      <g>
+        <text fill="black" stroke="none" font-family="monospaced" font-size="10pt" font-style="normal" font-weight="normal" text-decoration="normal" x="339.85306885499995" y="345.451853172" text-anchor="start" dominant-baseline="alphabetic">Communicate&#xA0;over&#xA0;FDS</text>
+      </g>
+      <g>
+        <path fill="none" stroke="black" paint-order="fill stroke markers" d=" M 45.438983582000006 351.48331285200004 L 770.7540459279999 351.48331285200004" stroke-miterlimit="10" stroke-width="1.2565541" stroke-dasharray=""/>
+        <g transform="translate(773.2671541279999,351.48331285200004) translate(-773.2671541279999,-351.48331285200004)">
+          <path fill="black" stroke="none" paint-order="stroke fill markers" d=" M 760.7016131279998 345.200542352 L 773.2671541279999 351.48331285200004 L 760.7016131279998 357.76608335200007 Z"/>
+          <g transform="translate(45.438983582000006,351.48331285200004) translate(-45.438983582000006,-351.48331285200004)">
+            <path fill="black" stroke="none" paint-order="stroke fill markers" d=" M 58.00452458200001 345.200542352 L 45.438983582000006 351.48331285200004 L 58.00452458200001 357.76608335200007 Z"/>
+          </g>
+        </g>
+      </g>
+      <g>
+        <text fill="black" stroke="none" font-family="monospaced" font-size="10pt" font-style="normal" font-weight="normal" text-decoration="normal" x="371.35306885499995" y="387.6720709320001" text-anchor="start" dominant-baseline="alphabetic">success&#xA0;|&#xA0;fail</text>
+      </g>
+      <g>
+        <path fill="none" stroke="black" paint-order="fill stroke markers" d=" M 523.118439346 393.70353061200007 L 298.1008065639999 393.70353061200007" stroke-miterlimit="10" stroke-width="1.2565541" stroke-dasharray="6.03145968"/>
+        <g transform="translate(295.58769836399995,393.70353061200007) translate(-295.58769836399995,-393.70353061200007)">
+          <path fill="black" stroke="none" paint-order="stroke fill markers" d=" M 308.15323936399994 387.42076011200004 L 295.58769836399995 393.70353061200007 L 308.15323936399994 399.9863011120001 Z"/>
+        </g>
+      </g>
+      <path fill="white" stroke="black" paint-order="fill stroke markers" d=" M 280.509049164 441.20127559200006 L 272.969724564 441.20127559200006 M 172.74950680399996 416.321504412 L 259.398940284 416.321504412 L 272.969724564 429.892288692 L 272.969724564 466.08104677200004 L 172.74950680399996 466.08104677200004 L 172.74950680399996 416.321504412 M 259.398940284 416.321504412 L 259.398940284 429.892288692 L 272.969724564 429.892288692" stroke-miterlimit="10" stroke-width="1.2565541" stroke-dasharray=""/>
+      <g>
+        <text fill="black" stroke="none" font-family="monospaced" font-size="10pt" font-style="normal" font-weight="normal" text-decoration="normal" x="193.85961568399998" y="437.43161329200007" text-anchor="start" dominant-baseline="alphabetic">intercepts</text>
+        <text fill="black" stroke="none" font-family="monospaced" font-size="10pt" font-style="normal" font-weight="normal" text-decoration="normal" x="193.85961568399998" y="452.51026249200004" text-anchor="start" dominant-baseline="alphabetic">signals</text>
+      </g>
+      <g>
+        <text fill="black" stroke="none" font-family="monospaced" font-size="10pt" font-style="normal" font-weight="normal" text-decoration="normal" x="105.47401637299998" y="502.2698048520001" text-anchor="start" dominant-baseline="alphabetic">send&#xA0;signal&#xA0;(i.e.&#xA0;^C)</text>
+      </g>
+      <g>
+        <path fill="none" stroke="black" paint-order="fill stroke markers" d=" M 45.438983582000006 508.30126453200006 L 277.995940964 508.30126453200006" stroke-miterlimit="10" stroke-width="1.2565541" stroke-dasharray=""/>
+        <g transform="translate(280.509049164,508.30126453200006) translate(-280.509049164,-508.30126453200006)">
+          <path fill="black" stroke="none" paint-order="stroke fill markers" d=" M 267.943508164 502.01849403200004 L 280.509049164 508.30126453200006 L 267.943508164 514.5840350320001 Z"/>
+        </g>
+      </g>
+      <g>
+        <text fill="black" stroke="none" font-family="monospaced" font-size="10pt" font-style="normal" font-weight="normal" text-decoration="normal" x="375.85306885499995" y="544.4900226120001" text-anchor="start" dominant-baseline="alphabetic">signal&#xA0;value</text>
+      </g>
+      <g>
+        <path fill="none" stroke="black" paint-order="fill stroke markers" d=" M 295.58769836399995 550.5214822920001 L 520.6053311459999 550.5214822920001" stroke-miterlimit="10" stroke-width="1.2565541" stroke-dasharray=""/>
+        <g transform="translate(523.118439346,550.5214822920001) translate(-523.118439346,-550.5214822920001)">
+          <path fill="black" stroke="none" paint-order="stroke fill markers" d=" M 510.55289834599995 544.2387117920001 L 523.118439346 550.5214822920001 L 510.55289834599995 556.804252792 Z"/>
+        </g>
+      </g>
+      <g>
+        <text fill="black" stroke="none" font-family="monospaced" font-size="10pt" font-style="normal" font-weight="normal" text-decoration="normal" x="622.7321213369999" y="586.710240372" text-anchor="start" dominant-baseline="alphabetic">send&#xA0;signal</text>
+      </g>
+      <g>
+        <path fill="none" stroke="black" paint-order="fill stroke markers" d=" M 538.1970885459999 592.741700052 L 770.7540459279999 592.741700052" stroke-miterlimit="10" stroke-width="1.2565541" stroke-dasharray=""/>
+        <g transform="translate(773.2671541279999,592.741700052) translate(-773.2671541279999,-592.741700052)">
+          <path fill="black" stroke="none" paint-order="stroke fill markers" d=" M 760.7016131279998 586.4589295520001 L 773.2671541279999 592.741700052 L 760.7016131279998 599.024470552 Z"/>
+        </g>
+      </g>
+      <g>
+        <text fill="black" stroke="none" font-family="monospaced" font-size="10pt" font-style="normal" font-weight="normal" text-decoration="normal" x="597.2321213369999" y="628.9304581320001" text-anchor="start" dominant-baseline="alphabetic">&#xA0;&#xA0;&#xA0;&#xA0;send&#xA0;SIGKILL</text>
+        <text fill="black" stroke="none" font-family="monospaced" font-size="10pt" font-style="normal" font-weight="normal" text-decoration="normal" x="597.2321213369999" y="644.0091073320001" text-anchor="start" dominant-baseline="alphabetic">if&#xA0;client&#xA0;disconnects</text>
+      </g>
+      <g>
+        <path fill="none" stroke="black" paint-order="fill stroke markers" d=" M 538.1970885459999 650.0405670120001 L 770.7540459279999 650.0405670120001" stroke-miterlimit="10" stroke-width="1.2565541" stroke-dasharray="6.03145968"/>
+        <g transform="translate(773.2671541279999,650.0405670120001) translate(-773.2671541279999,-650.0405670120001)">
+          <path fill="black" stroke="none" paint-order="stroke fill markers" d=" M 760.7016131279998 643.7577965120001 L 773.2671541279999 650.0405670120001 L 760.7016131279998 656.3233375120001 Z"/>
+        </g>
+      </g>
+      <g>
+        <text fill="black" stroke="none" font-family="monospaced" font-size="10pt" font-style="normal" font-weight="normal" text-decoration="normal" x="628.7321213369999" y="686.2293250920001" text-anchor="start" dominant-baseline="alphabetic">exit&#xA0;code</text>
+      </g>
+      <g>
+        <path fill="none" stroke="black" paint-order="fill stroke markers" d=" M 773.2671541279999 692.2607847720001 L 540.710196746 692.2607847720001" stroke-miterlimit="10" stroke-width="1.2565541" stroke-dasharray=""/>
+        <g transform="translate(538.1970885459999,692.2607847720001) translate(-538.1970885459999,-692.2607847720001)">
+          <path fill="black" stroke="none" paint-order="stroke fill markers" d=" M 550.762629546 685.9780142720001 L 538.1970885459999 692.2607847720001 L 550.762629546 698.543555272 Z"/>
+        </g>
+      </g>
+      <g>
+        <path fill="none" stroke="black" paint-order="fill stroke markers" d=" M 759.6963698479999 678.6900004920001 L 786.8379384079999 705.8315690520001 M 786.8379384079999 678.6900004920001 L 759.6963698479999 705.8315690520001" stroke-miterlimit="10" stroke-width="2.4125838720000004" stroke-dasharray=""/>
+      </g>
+      <g>
+        <text fill="black" stroke="none" font-family="monospaced" font-size="10pt" font-style="normal" font-weight="normal" text-decoration="normal" x="386.12273115499994" y="728.449542852" text-anchor="start" dominant-baseline="alphabetic">exit&#xA0;code</text>
+      </g>
+      <g>
+        <path fill="none" stroke="black" paint-order="fill stroke markers" d=" M 530.6577639459999 734.481002532 L 298.1008065639999 734.481002532" stroke-miterlimit="10" stroke-width="1.2565541" stroke-dasharray="6.03145968"/>
+        <g transform="translate(295.58769836399995,734.481002532) translate(-295.58769836399995,-734.481002532)">
+          <path fill="black" stroke="none" paint-order="stroke fill markers" d=" M 308.15323936399994 728.1982320320001 L 295.58769836399995 734.481002532 L 308.15323936399994 740.763773032 Z"/>
+        </g>
+      </g>
+      <g>
+        <text fill="black" stroke="none" font-family="monospaced" font-size="10pt" font-style="normal" font-weight="normal" text-decoration="normal" x="139.74367867299998" y="770.669760612" text-anchor="start" dominant-baseline="alphabetic">exit&#xA0;code</text>
+      </g>
+      <g>
+        <path fill="none" stroke="black" paint-order="fill stroke markers" d=" M 288.04837376399996 776.701220292 L 47.952091782000004 776.701220292" stroke-miterlimit="10" stroke-width="1.2565541" stroke-dasharray="6.03145968"/>
+        <g transform="translate(45.438983582000006,776.701220292) translate(-45.438983582000006,-776.701220292)">
+          <path fill="black" stroke="none" paint-order="stroke fill markers" d=" M 58.00452458200001 770.418449792 L 45.438983582000006 776.701220292 L 58.00452458200001 782.983990792 Z"/>
+        </g>
+      </g>
+      <g>
+        <path fill="none" stroke="black" paint-order="fill stroke markers" d=" M 274.47758948399996 763.130436012 L 301.61915804399996 790.272004572 M 301.61915804399996 763.130436012 L 274.47758948399996 790.272004572" stroke-miterlimit="10" stroke-width="2.4125838720000004" stroke-dasharray=""/>
+      </g>
+    </g>
+    <g/>
+    <g/>
+  </g>
+</svg>

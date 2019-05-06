@@ -1,0 +1,40 @@
+participantspacing equal
+participantgroup #lightgrey Sidecar
+participant Shell
+participant Client
+end
+
+participantgroup #lightgrey Implementation
+participant Server
+participant Process
+end
+
+Shell->*Client: Spawn with FDS [in, out, err]
+
+Client->Server: connect
+activate Server
+Client->Server: [argv, cwd env, fds]
+Server->*Process: spawn
+
+Shell<->Process: Communicate over FDS
+
+Server-->Client: success | fail
+activate Server
+
+activate Client
+note over Client : intercepts\nsignals
+Shell->Client: send signal (i.e. ^C)
+Client->Server: signal value
+Server->Process: send signal
+Server-->Process:     send SIGKILL\nif client disconnects
+Process->Server: exit code
+
+destroy Process
+deactivate Server
+
+Server-->Client: exit code
+deactivate Client
+deactivate Server
+
+Client-->Shell: exit code
+destroy Client
