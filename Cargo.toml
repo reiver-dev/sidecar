@@ -1,0 +1,28 @@
+[package]
+name = "sidecar"
+version = "1.0.0"
+authors = ["Andrey Bushev <hlam-box@yandex.ru>"]
+description = "Passing command to sidecar containers"
+edition = "2018"
+
+[profile.release]
+lto = true
+opt-level = "s"
+panic = "abort"
+
+[dependencies]
+clap = "2"
+log = { version = "0.4", features = ["std"]}
+scopeguard = "1"
+nix = "0.13"
+serde = "*"
+serde_derive = "*"
+rmp-serde = "0.13"
+bytes = "0.4"
+futures = "0.1"
+mio = "0.6"
+tokio = "0.1"
+tokio-codec = "0.1"
+tokio-reactor = "0.1"
+tokio-process = "0.2"
+signal-hook = { version = "0.1", features = ["tokio-support"]}
