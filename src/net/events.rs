@@ -1,6 +1,7 @@
 use futures::{try_ready, Async, Poll, Stream};
-use mio::Ready;
+pub use mio::Ready;
 use std::io;
+pub use std::net::Shutdown;
 use std::path::Path;
 use tokio_reactor::PollEvented;
 
@@ -90,8 +91,16 @@ impl UnixPacket {
         self.io.poll_read_ready(ready)
     }
 
+    pub fn clear_read_ready(&self, ready: Ready) -> Result<(), io::Error> {
+        self.io.clear_read_ready(ready)
+    }
+
     pub fn poll_write_ready(&self) -> Poll<Ready, io::Error> {
         self.io.poll_write_ready()
+    }
+
+    pub fn clear_write_ready(&self) -> Result<(), io::Error> {
+        self.io.clear_write_ready()
     }
 
     pub fn poll_recv(&self, buf: &mut [u8]) -> Poll<usize, io::Error> {
@@ -172,6 +181,14 @@ impl UnixPacket {
         F: AsRef<[RawFd]>,
     {
         SendMsg::new(self, buf, fds)
+    }
+
+    pub fn take_error(&self) -> io::Result<Option<io::Error>> {
+        self.io.get_ref().take_error()
+    }
+
+    pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
+        self.io.get_ref().shutdown(how)
     }
 }
 

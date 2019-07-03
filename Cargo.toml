@@ -1,19 +1,26 @@
 [package]
 name = "sidecar"
-version = "1.0.0"
+version = "1.1.0"
 authors = ["Andrey Bushev <hlam-box@yandex.ru>"]
 description = "Passing command to sidecar containers"
 edition = "2018"
 
 [profile.release]
+opt-level = "z"
 lto = true
-opt-level = "s"
 panic = "abort"
+codegen-units = 1
+debug-assertions = false
+debug = false
+rpath = false
 
 [dependencies]
-clap = "2"
+clap = { version = "2", default_features = false, features = ["vec_map"]}
 log = { version = "0.4", features = ["std"]}
+bitflags = "1.1.0"
 scopeguard = "1"
+rent_to_own = "0.1.0"
+state_machine_future = "0.2.0"
 nix = "0.13"
 serde = "*"
 serde_derive = "*"

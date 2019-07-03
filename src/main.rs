@@ -2,13 +2,16 @@ use clap::{
     crate_authors, crate_description, crate_version, App, AppSettings, Arg,
     ArgMatches, SubCommand,
 };
-use log::{self, error, Level, Log};
+use log::{self, error, info, Level, Log};
 use std::str::FromStr;
 
 mod client;
+mod debug;
 mod messages;
 mod net;
 mod server;
+mod stop;
+mod system;
 
 fn configure_arguments() -> App<'static, 'static> {
     let help_msg = "display this help and exit";
@@ -24,7 +27,7 @@ fn configure_arguments() -> App<'static, 'static> {
         .help_message(help_msg)
         .version_message(version_msg)
         .arg(
-            clap::Arg::with_name("verbosity")
+            Arg::with_name("verbosity")
                 .short("v")
                 .long("verbose")
                 .help("enable debug messages")
@@ -42,6 +45,7 @@ fn configure_arguments() -> App<'static, 'static> {
                         .long("connect")
                         .value_name("PATH")
                         .takes_value(true)
+                        .required(true)
                         .help("server socket location"),
                 )
                 .arg(
@@ -63,6 +67,21 @@ fn configure_arguments() -> App<'static, 'static> {
                         .takes_value(true),
                 )
                 .arg(
+                    Arg::with_name("ctty").long("ctty").help(
+                        "set the controlling terminal to the current one",
+                    ),
+                )
+                .arg(
+                    Arg::with_name("setpgid")
+                        .long("setpgid")
+                        .help("run program as process group leader"),
+                )
+                .arg(
+                    Arg::with_name("setsid")
+                        .long("setsid")
+                        .help("run program in a new session"),
+                )
+                .arg(
                     Arg::with_name("program")
                         .value_name("COMMAND")
                         .help("argv to execute")
@@ -70,7 +89,7 @@ fn configure_arguments() -> App<'static, 'static> {
                 ),
         )
         .subcommand(
-            SubCommand::with_name("serve")
+            SubCommand::with_name("start")
                 .about("Start server and wait for commands")
                 .help_message(help_msg)
                 .arg(
@@ -79,6 +98,28 @@ fn configure_arguments() -> App<'static, 'static> {
                         .long("parents")
                         .help("make parent directories as needed"),
                 )
+                .arg(
+                    Arg::with_name("setpgid")
+                        .long("setpgid")
+                        .help("run program as process group leader"),
+                )
+                .arg(
+                    Arg::with_name("setsid")
+                        .long("setsid")
+                        .help("run program in a new session"),
+                )
+                .arg(
+                    Arg::with_name("path")
+                        .value_name("PATH")
+                        .help("server socket location")
+                        .required(true)
+                        .index(1),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("stop")
+                .about("Stop running server")
+                .help_message(help_msg)
                 .arg(
                     Arg::with_name("path")
                         .value_name("PATH")
@@ -116,27 +157,56 @@ fn command_exec(matches: &ArgMatches) -> Result<i32, std::io::Error> {
     } else {
         Vec::new()
     };
-    let cwd = matches.value_of("workdir");
+    let workdir = matches.value_of("workdir");
+    let setpgid = matches.is_present("setpgid");
+    let setsid = matches.is_present("setsid");
+    let ctty = matches.is_present("ctty");
 
     client::command(&client::Args {
         connect: socketpath.as_path(),
         program: program.as_slice(),
         env: &envs,
-        cwd,
+        cwd: workdir,
+        setpgid,
+        setsid,
+        ctty,
     })
 }
 
 fn command_server(matches: &ArgMatches) -> Result<(), std::io::Error> {
     let connect = matches.value_of("path").unwrap();
     let sockpath = std::path::PathBuf::from_str(connect).unwrap();
+
     if matches.is_present("parents") {
         if let Some(parent) = sockpath.parent() {
             std::fs::create_dir_all(parent)?;
         }
     }
+
+    if matches.is_present("setpgid") {
+        info!("becoming process group leader");
+        system::new_process_group()?;
+    }
+
+    if matches.is_present("setsid") {
+        info!("becoming session leader");
+        system::new_session()?;
+    }
+
     server::command(&server::Args {
         server: sockpath.as_path(),
     })?;
+    Ok(())
+}
+
+fn command_stop(matches: &ArgMatches) -> Result<(), std::io::Error> {
+    let connect = matches.value_of("path").unwrap();
+    let sockpath = std::path::PathBuf::from_str(connect).unwrap();
+
+    stop::command(&stop::Args {
+        connect: sockpath.as_path(),
+    })?;
+
     Ok(())
 }
 
@@ -206,10 +276,17 @@ fn run() -> i32 {
                 128
             }
         },
-        ("serve", Some(rest)) => match command_server(rest) {
+        ("start", Some(rest)) => match command_server(rest) {
             Ok(()) => 0,
             Err(err) => {
                 error!("failed to spawn server {:?}", err);
+                1
+            }
+        },
+        ("stop", Some(rest)) => match command_stop(rest) {
+            Ok(()) => 0,
+            Err(err) => {
+                error!("failed to stop server {:?}", err);
                 1
             }
         },

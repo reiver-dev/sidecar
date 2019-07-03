@@ -13,16 +13,11 @@ use nix::sys::socket::{
 };
 use nix::sys::uio::IoVec;
 
+use super::error;
+
 #[derive(Debug)]
 pub struct UnixPacket {
     inner: RawFd,
-}
-
-fn error(err: nix::Error) -> io::Error {
-    match err {
-        nix::Error::Sys(val) => val.into(),
-        _ => unreachable!(),
-    }
 }
 
 impl Drop for UnixPacket {

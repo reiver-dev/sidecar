@@ -1,3 +1,4 @@
+use bitflags::bitflags;
 use bytes::{BufMut, BytesMut};
 use log::trace;
 use rmp_serde;
@@ -9,6 +10,8 @@ use std::io::{Error as IoError, Write};
 use std::marker::PhantomData;
 use tokio_codec::{Decoder, Encoder};
 
+use crate::debug::bytes;
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Io {
     pub stdin: i32,
@@ -17,8 +20,36 @@ pub struct Io {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Request {
+pub enum Request {
+    Stop,
+    Exec(ExecRequest),
+}
+
+bitflags! {
+    #[derive(Serialize, Deserialize)]
+    pub struct StartMode : u32 {
+        const PROCESS_GROUP = 1;
+        const SESSION = 2;
+        const CONTROLLING_TERMINAL = 4;
+    }
+}
+
+// pub enum StartMode {
+//     Default,
+//     ProcessGroup,
+//     Session,
+// }
+
+// #[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+// pub enum ControllingTerminal {
+//     Default,
+//     Enable,
+// }
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ExecRequest {
     pub argv: Vec<String>,
+    pub startup: StartMode,
     pub cwd: Option<String>,
     pub env: Option<Vec<(String, String)>>,
     pub io: Option<Io>,
@@ -32,10 +63,10 @@ pub struct StartedProcess {
     pub pid: i32,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Signal(pub i32);
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RetCode(pub i32);
 
 pub fn encode_request<W, T>(dest: &mut W, req: &T)
@@ -100,41 +131,5 @@ where
         } else {
             Ok(None)
         }
-    }
-}
-
-pub fn bytes<'a, T: AsRef<[u8]> + 'a>(val: &'a T) -> BytesDebug<'a> {
-    BytesDebug(val.as_ref())
-}
-
-pub struct BytesDebug<'a>(pub &'a [u8]);
-
-impl<'a> std::fmt::Debug for BytesDebug<'a> {
-    fn fmt(
-        &self,
-        fmt: &mut std::fmt::Formatter,
-    ) -> Result<(), std::fmt::Error> {
-        write!(fmt, "b\"")?;
-        for &c in self.0 {
-            // https://doc.rust-lang.org/reference.html#byte-escapes
-            if c == b'\n' {
-                write!(fmt, "\\n")?;
-            } else if c == b'\r' {
-                write!(fmt, "\\r")?;
-            } else if c == b'\t' {
-                write!(fmt, "\\t")?;
-            } else if c == b'\\' || c == b'"' {
-                write!(fmt, "\\{}", c as char)?;
-            } else if c == b'\0' {
-                write!(fmt, "\\0")?;
-            // ASCII printable
-            } else if c >= 0x20 && c < 0x7f {
-                write!(fmt, "{}", c as char)?;
-            } else {
-                write!(fmt, "\\x{:02x}", c)?;
-            }
-        }
-        write!(fmt, "\"")?;
-        Ok(())
     }
 }

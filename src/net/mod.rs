@@ -1,3 +1,4 @@
+mod error;
 mod events;
 mod framed;
 mod recv;
@@ -6,7 +7,8 @@ mod send;
 mod sendmsg;
 mod socket;
 
-pub use events::{UnixPacket, UnixPacketListener};
+pub use error::error;
+pub use events::{Ready, Shutdown, UnixPacket, UnixPacketListener};
 pub use framed::UnixPacketFramed;
 pub use nix::sys::socket::{CmsgSpace, ControlMessage};
 pub use recv::Recv;

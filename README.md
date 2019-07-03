@@ -31,7 +31,7 @@ containers.
 
 ```
 #!/bin/sh 
-exec /usr/local/bin/sidecar --connect /var/shared/sock --workdir "$(pwd)" -- progname "$@"
+exec /usr/local/bin/sidecar exec --connect /var/shared/sock --workdir "$(pwd)" -- "$(basename "$0")" "$@"
 ```
 
 
@@ -62,9 +62,9 @@ exec /usr/local/bin/sidecar --connect /var/shared/sock --workdir "$(pwd)" -- pro
 Signal passing is not possible for signals that can't be ignored: i.e.
 SIGKILL, SIGSTOP, SIGSEGV.
 
-Sending SIGTSTP and SIGCONT break client terminal because they are not
-passed to the child process and only affect the client, child process
-keeps running and using client's standard streams.
+Sending process to background breaks client terminal because shell job
+control does not track sidecar processes, child process keeps running
+and using client's standard streams without receiving SIGTTOU.
 
 ## License
 
