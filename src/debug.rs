@@ -38,7 +38,8 @@ impl<'a> std::fmt::Debug for BytesDebug<'a> {
 
 pub struct OptionDebug<'a, T: Debug>(pub &'a Option<T>);
 
-pub fn opt<'a, T: Debug>(val: &'a Option<T>) -> OptionDebug<'a, T> {
+#[allow(dead_code)]
+pub fn opt<T: Debug>(val: &Option<T>) -> OptionDebug<'_, T> {
     OptionDebug(val)
 }
 

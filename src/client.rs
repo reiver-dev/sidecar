@@ -1,96 +1,30 @@
-use log::{debug, error, trace, warn};
-use std::io::Error as IoError;
+use log::{debug, error, warn};
+use std::io::{Error as IoError, ErrorKind, Result};
 use std::os::unix::io::AsRawFd;
 use std::path::Path;
 
 use nix::sys::signal::{raise, Signal};
-use tokio::prelude::*;
-use tokio::runtime::current_thread::Runtime;
 
-use futures::future::Either;
-use futures::prelude::*;
-use futures::stream::Stream;
+use futures_util::future::{select, Either};
 
 use crate::messages as msg;
-use crate::net::{UnixPacket, UnixPacketFramed};
+use crate::runtime;
+use crate::signals;
+use crate::socket::Socket;
+use crate::system;
 
 pub(crate) struct Args<'a> {
     pub connect: &'a Path,
-    pub program: &'a [&'a str],
+    pub program: &'a str,
+    pub args: &'a [&'a str],
     pub env: &'a [(&'a str, &'a str)],
-    pub cwd: Option<&'a str>,
-    pub setpgid: bool,
+    pub cwd: &'a str,
+    pub uid: i32,
+    pub gid: i32,
+    pub deathsig: i32,
+    pub setpgid: Option<i32>,
     pub setsid: bool,
-    pub ctty: bool,
-}
-
-fn setup_signal_handlers(
-) -> Result<impl Stream<Item = Signal, Error = IoError>, IoError> {
-    use nix::sys::signal::*;
-    use signal_hook as hook;
-    use tokio_reactor::Handle;
-
-    let h = Handle::default();
-    let sigs = hook::iterator::Signals::new(
-        Signal::iterator()
-            .map(|x| x as i32)
-            .filter(|x| !hook::FORBIDDEN.contains(x)),
-    )?;
-
-    hook::iterator::Async::new(sigs, &h)
-        .map(|stream| stream.filter_map(|sig| Signal::from_c_int(sig).ok()))
-}
-
-struct SinkAfterSent<S: Sink, F> {
-    inner: S,
-    cb: F,
-    val: Option<S::SinkItem>,
-}
-
-impl<S: Sink, F> SinkAfterSent<S, F> {
-    fn new(sink: S, callback: F) -> Self {
-        Self {
-            inner: sink,
-            cb: callback,
-            val: None,
-        }
-    }
-}
-
-impl<S, F> Sink for SinkAfterSent<S, F>
-where
-    S: Sink,
-    F: Fn(S::SinkItem),
-    S::SinkItem: Clone,
-{
-    type SinkItem = S::SinkItem;
-    type SinkError = S::SinkError;
-
-    fn start_send(
-        &mut self,
-        item: Self::SinkItem,
-    ) -> StartSend<Self::SinkItem, Self::SinkError> {
-        let value = item.clone();
-        match self.inner.start_send(item) {
-            Ok(AsyncSink::Ready) => {
-                self.val = Some(value);
-                Ok(AsyncSink::Ready)
-            }
-            other => other,
-        }
-    }
-
-    fn poll_complete(&mut self) -> Poll<(), Self::SinkError> {
-        match self.inner.poll_complete() {
-            Ok(Async::Ready(())) => {
-                if let Some(item) = self.val.take() {
-                    (self.cb)(item);
-                }
-                Ok(Async::Ready(()))
-            }
-            other => other,
-        }
-    }
+    pub notty: bool,
 }
 
 fn handle_stop(mut sigval: i32) {
@@ -118,146 +52,188 @@ fn convert_to_group_signals(signal: Signal) -> i32 {
     }
 }
 
-fn wait_child<R, W, S>(
-    signals: S,
-    read: R,
-    write: W,
-) -> impl Future<Item = i32, Error = IoError>
-where
-    R: Stream<Item = msg::RetCode, Error = IoError>,
-    W: Sink<SinkItem = msg::Signal, SinkError = IoError>,
-    S: Stream<Item = Signal, Error = IoError>,
-{
-    let pass_signals = signals
-        .map(convert_to_group_signals)
-        .map(msg::Signal)
-        .forward(SinkAfterSent::new(write, |s: msg::Signal| handle_stop(s.0)));
+async fn wait_child(
+    socket: &Socket,
+    signals: &signals::SignalHandler,
+    mut buffer: &mut Vec<u8>,
+) -> Result<i32> {
+    let mut sendbuf = Vec::new();
+    let mut srv = socket.recv(&mut buffer);
+    let mut sig = signals.wait();
 
-    debug!("waiting process to complete");
+    let child_finished = |result: Result<usize>, buffer: &[u8]| {
+        use msg::ProcessResult::*;
+        match result {
+            Ok(0) => {
+                warn!("server disconnected");
+                Ok(128)
+            }
+            Ok(bytes) => {
+                let status: msg::ProcessResult;
+                status = msg::decode_request(&buffer[..bytes])?;
+                match status {
+                    Undefined => {
+                        warn!("exit reason undefined");
+                        Ok(127)
+                    }
+                    Exit(code) => Ok(code),
+                    Signal(sig) => Ok(128 + sig),
+                }
+            }
+            Err(err) => Err(err),
+        }
+    };
 
-    read.into_future()
-        .select2(pass_signals)
-        .map(|res| match res {
-            Either::A(((result, _sink), _signals)) => match result {
-                Some(ret) => ret.0,
-                None => {
-                    warn!("server disconnected");
-                    128
+    let exitstatus = loop {
+        let selected = select(srv, sig).await;
+        let (nsrv, nsig) = match selected {
+            Either::Left((read, _sig1)) => {
+                break child_finished(read, buffer)?;
+            }
+            Either::Right((sigval, srv1)) => match sigval {
+                Ok(val) => {
+                    let v = convert_to_group_signals(val);
+
+                    let m = msg::Signal(v);
+
+                    sendbuf.clear();
+                    msg::encode_request(&mut sendbuf, &m)?;
+                    let sel = select(srv1, socket.send(&sendbuf)).await;
+
+                    match sel {
+                        Either::Left((read, _sigsend)) => {
+                            break child_finished(read, buffer)?;
+                        }
+                        Either::Right((delivered, srv1)) => match delivered {
+                            Ok(_) => {
+                                debug!("signal value sent");
+                                handle_stop(v);
+                                (srv1, signals.wait())
+                            }
+                            Err(err) => {
+                                warn!("sender error");
+                                return Err(err);
+                            }
+                        },
+                    }
+                }
+                Err(err) => {
+                    panic!(format!("signal handler error {:?}", err));
                 }
             },
-            Either::B(_any) => {
-                panic!("signal handler completed");
-            }
-        })
-        .map_err(|err| match err {
-            Either::A(((err, _sink), _other)) => {
-                warn!("receiver error");
-                err
-            }
-            Either::B((err, _other)) => {
-                warn!("sender error");
-                err
-            }
-        })
+        };
+
+        srv = nsrv;
+        sig = nsig;
+    };
+
+    Ok(exitstatus)
 }
 
-fn prepare_request(args: &Args) -> msg::ExecRequest {
+fn prepare_request<'a>(args: &Args<'a>) -> msg::ExecRequestInput<'a> {
     let mut startup = msg::StartMode::empty();
-
-    if args.setpgid {
-        startup |= msg::StartMode::PROCESS_GROUP
-    }
+    let pgid = match args.setpgid {
+        Some(id) => {
+            startup |= msg::StartMode::PROCESS_GROUP;
+            id
+        }
+        None => 0,
+    };
 
     if args.setsid {
         startup |= msg::StartMode::SESSION;
     }
 
-    if args.ctty {
-        startup |= msg::StartMode::CONTROLLING_TERMINAL;
+    if args.notty {
+        startup |= msg::StartMode::DETACH_TERMINAL;
     }
 
-    msg::ExecRequest {
-        argv: args
-            .program
-            .iter()
-            .map(|s| s.to_string())
-            .collect::<Vec<_>>(),
-        startup: startup,
-        cwd: match &args.cwd {
-            Some("") => None,
-            None => None,
-            Some(s) => Some(s.to_string()),
-        },
-        env: if !args.env.is_empty() {
-            Some(
-                args.env
-                    .iter()
-                    .map(|(k, v)| (k.to_string(), v.to_string()))
-                    .collect(),
-            )
-        } else {
-            None
-        },
-        io: Some(msg::Io {
-            stdin: std::io::stdin().as_raw_fd(),
-            stdout: std::io::stdout().as_raw_fd(),
-            stderr: std::io::stderr().as_raw_fd(),
-        }),
+    let files = msg::Files::IN | msg::Files::OUT | msg::Files::ERR;
+
+    msg::ExecRequestInput {
+        program: args.program,
+        argv: args.args,
+        cwd: args.cwd,
+        env: args.env,
+        startup,
+        io: files,
+        pgid,
+        uid: args.uid,
+        gid: args.gid,
+        deathsig: args.deathsig,
+        connsig: system::SIGKILL as i32,
     }
 }
 
-fn execute(
-    args: &Args,
-    socket: UnixPacket,
-) -> impl Future<Item = i32, Error = IoError> {
-    let mut buffer = Vec::with_capacity(4096);
+async fn execute(
+    request: &msg::ExecRequestInput<'_>,
+    socket: Socket,
+) -> Result<i32> {
+    let mut buffer = Vec::new();
+    msg::encode_request(&mut buffer, &request)?;
 
     {
-        let request = msg::Request::Exec(prepare_request(args));
-        debug!("sending {:#?}", request);
-        msg::encode_request(&mut buffer, &request);
+        let mut header = Vec::new();
+        msg::encode_request(
+            &mut header,
+            &msg::RequestInput::Exec(msg::ExecHeader {
+                body_size: buffer.len(),
+            }),
+        )?;
+
+        let _sent = socket.send(&header).await?;
     }
 
-    let streams = [
-        std::io::stdin().as_raw_fd(),
-        std::io::stdout().as_raw_fd(),
-        std::io::stderr().as_raw_fd(),
-    ];
+    {
+        let streams = [
+            std::io::stdin().as_raw_fd(),
+            std::io::stdout().as_raw_fd(),
+            std::io::stderr().as_raw_fd(),
+        ];
+        let _sent = socket.sendfds(&buffer, &streams).await?;
+    }
 
-    socket
-        .sendmsg(buffer, streams)
-        .and_then(|(sock, mut buf)| {
-            buf.clear();
-            buf.resize(4096, 0);
-            sock.recv(buf)
-        })
-        .and_then(|(sock, mut buf, received)| {
-            trace!("response received {:?} bytes", received);
-            if received > 0 {
-                let ret: msg::StartedProcess =
-                    msg::decode_request(&buf[..received]);
-                debug!("received {:#?}", ret);
-                buf.clear();
-            } else {
-                warn!("server disconnected");
-            }
-            buf.resize_with(4096, Default::default);
-            let sigsink = setup_signal_handlers()
-                .expect("failed to setup signal handler");
-            let framed = UnixPacketFramed::new(
-                sock,
-                msg::Codec::<msg::RetCode, msg::Signal>::new(),
-            );
-            let (write, read) = framed.split();
-            wait_child(sigsink, read, write)
-        })
+    buffer.clear();
+    buffer.resize(4096, 0);
+
+    let received = socket.recv(&mut buffer).await?;
+    debug!("response received {:?} bytes", received);
+
+    if received > 0 {
+        let ret: msg::StartedProcess =
+            { msg::decode_request_ref(&buffer[..received])? };
+        debug!("received {:#?}", ret);
+        if ret.errno != 0 {
+            Err(IoError::from_raw_os_error(ret.errno))
+        } else {
+            let sigsink = signals::SignalHandler::new()?;
+            wait_child(&socket, &sigsink, &mut buffer).await
+        }
+    } else {
+        warn!("server disconnected");
+        Err(ErrorKind::ConnectionAborted.into())
+    }
 }
 
-pub(crate) fn command(args: &Args) -> Result<i32, IoError> {
-    let mut runtime = Runtime::new()?;
+pub(crate) fn command(args: &Args) -> Result<i32> {
+    let request = prepare_request(args);
+
     debug!("connecting to {:?}", args.connect);
-    let socket = UnixPacket::connect(args.connect)?;
-    let ret = runtime.block_on(execute(&args, socket));
-    debug!("finished with code {:?}", ret);
-    ret
+    match Socket::connect(args.connect) {
+        Ok(socket) => {
+            let ret = runtime::start(execute(&request, socket))?;
+            debug!("finished with code {:?}", ret);
+            ret
+        }
+        Err(err) => {
+            error!(
+                "failed to connect\n    \
+                 socket: {}\n    \
+                 error:  {}",
+                args.connect.to_string_lossy(),
+                err,
+            );
+            Ok(128)
+        }
+    }
 }

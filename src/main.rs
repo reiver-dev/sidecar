@@ -1,133 +1,169 @@
-use clap::{
-    crate_authors, crate_description, crate_version, App, AppSettings, Arg,
-    ArgMatches, SubCommand,
-};
-use log::{self, error, info, Level, Log};
-use std::str::FromStr;
+//! Main
+
+mod child;
+mod child_watcher;
+mod debug;
+mod guards;
+mod messages;
+mod pipe;
+mod raw;
+mod runtime;
+mod signals;
+mod socket;
+mod system;
+mod tty;
 
 mod client;
-mod debug;
-mod messages;
-mod net;
 mod server;
 mod stop;
-mod system;
 
-fn configure_arguments() -> App<'static, 'static> {
-    let help_msg = "display this help and exit";
-    let version_msg = "output version information and exit";
-    App::new("sidecar")
-        .author(crate_authors!())
-        .version(crate_version!())
-        .about(crate_description!())
-        .setting(AppSettings::SubcommandRequiredElseHelp)
-        .setting(AppSettings::DisableHelpSubcommand)
-        .setting(AppSettings::GlobalVersion)
-        .setting(AppSettings::VersionlessSubcommands)
-        .help_message(help_msg)
-        .version_message(version_msg)
-        .arg(
-            Arg::with_name("verbosity")
-                .short("v")
-                .long("verbose")
-                .help("enable debug messages")
-                .multiple(true)
-                .global(true),
-        )
-        .subcommand(
-            SubCommand::with_name("exec")
-                .setting(AppSettings::TrailingVarArg)
-                .about("Execute command on a server")
-                .help_message(help_msg)
-                .arg(
-                    Arg::with_name("connect")
-                        .short("c")
-                        .long("connect")
-                        .value_name("PATH")
-                        .takes_value(true)
-                        .required(true)
-                        .help("server socket location"),
-                )
-                .arg(
-                    Arg::with_name("env")
-                        .short("e")
-                        .long("env")
-                        .value_name("NAME=VALUE")
-                        .number_of_values(1)
-                        .takes_value(true)
-                        .multiple(true)
-                        .help("set each NAME to VALUE in the environment"),
-                )
-                .arg(
-                    Arg::with_name("workdir")
-                        .help("change working directory to DIR")
-                        .short("w")
-                        .long("workdir")
-                        .value_name("DIR")
-                        .takes_value(true),
-                )
-                .arg(
-                    Arg::with_name("ctty").long("ctty").help(
-                        "set the controlling terminal to the current one",
-                    ),
-                )
-                .arg(
-                    Arg::with_name("setpgid")
-                        .long("setpgid")
-                        .help("run program as process group leader"),
-                )
-                .arg(
-                    Arg::with_name("setsid")
-                        .long("setsid")
-                        .help("run program in a new session"),
-                )
-                .arg(
-                    Arg::with_name("program")
-                        .value_name("COMMAND")
-                        .help("argv to execute")
-                        .multiple(true),
-                ),
-        )
-        .subcommand(
-            SubCommand::with_name("start")
-                .about("Start server and wait for commands")
-                .help_message(help_msg)
-                .arg(
-                    Arg::with_name("parents")
-                        .short("p")
-                        .long("parents")
-                        .help("make parent directories as needed"),
-                )
-                .arg(
-                    Arg::with_name("setpgid")
-                        .long("setpgid")
-                        .help("run program as process group leader"),
-                )
-                .arg(
-                    Arg::with_name("setsid")
-                        .long("setsid")
-                        .help("run program in a new session"),
-                )
-                .arg(
-                    Arg::with_name("path")
-                        .value_name("PATH")
-                        .help("server socket location")
-                        .required(true)
-                        .index(1),
-                ),
-        )
-        .subcommand(
-            SubCommand::with_name("stop")
-                .about("Stop running server")
-                .help_message(help_msg)
-                .arg(
-                    Arg::with_name("path")
-                        .value_name("PATH")
-                        .help("server socket location")
-                        .required(true)
-                        .index(1),
-                ),
-        )
+use std::io::{Result, Write};
+use std::path::PathBuf;
+
+use crate::system::{signal_from_str, Signal};
+use gumdrop::{Options, ParsingStyle};
+use log::{self, error, Level, Log};
+
+const NAME: &str = env!("CARGO_PKG_NAME");
+const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
+const DESCRIPTION: &str = env!("CARGO_PKG_DESCRIPTION");
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+#[derive(Debug, Options)]
+struct Cli {
+    #[options(help = "print help message and exit")]
+    help: bool,
+
+    #[options(count, help = "enable debug messages (up to 3)")]
+    verbose: u32,
+
+    #[options(help = "output version information and exit")]
+    version: bool,
+
+    #[options(command)]
+    command: Option<Command>,
+}
+
+#[derive(Debug, Options)]
+enum Command {
+    /// Start server and wait for commands
+    Start(StartCommand),
+
+    /// Stop running server
+    Stop(StopCommand),
+
+    /// Execute command on server
+    Exec(ExecCommand),
+}
+
+/// Start server and wait for commands
+#[derive(Debug, Options)]
+struct StartCommand {
+    #[options(help = "print help message and exit")]
+    help: bool,
+
+    #[options(count, help = "enable debug messages (up to 3)")]
+    verbose: u32,
+
+    #[options(help = "make parent directories as needed")]
+    parents: bool,
+
+    #[options(help = "set the effective user ID", meta = "UID", no_short)]
+    setuid: Option<u32>,
+
+    #[options(help = "sets the effective group ID", meta = "GID", no_short)]
+    setgid: Option<u32>,
+
+    #[options(help = "start server as a new session", no_short)]
+    setsid: bool,
+
+    #[options(
+        help = "assign server to a process group (0 for leader)",
+        meta = "PGID",
+        no_short
+    )]
+    setpgid: Option<i32>,
+
+    #[options(help = "detach process from /dev/tty", no_short)]
+    notty: bool,
+
+    #[options(help = "server socket location", free)]
+    path: PathBuf,
+}
+
+/// Stop running server
+#[derive(Debug, Options)]
+struct StopCommand {
+    #[options(help = "print help message and exit")]
+    help: bool,
+
+    #[options(count, help = "enable debug messages (up to 3)")]
+    verbose: u32,
+
+    #[options(help = "server socket location", free)]
+    path: PathBuf,
+}
+
+/// Execute command on server
+#[derive(Debug, Options)]
+struct ExecCommand {
+    #[options(help = "print help message and exit")]
+    help: bool,
+
+    #[options(count, help = "enable debug messages (up to 3)")]
+    verbose: u32,
+
+    #[options(help = "server socket location")]
+    connect: PathBuf,
+
+    #[options(
+        help = "set each NAME to VALUE in the environment",
+        meta = "NAME=VALUE"
+    )]
+    env: Vec<String>,
+
+    #[options(help = "change working directory to DIR", meta = "DIR")]
+    workdir: String,
+
+    #[options(
+        help = "set user id",
+        default_expr = "-1",
+        meta = "UID",
+        no_short
+    )]
+    setuid: i32,
+
+    #[options(
+        help = "set group id",
+        default_expr = "-1",
+        meta = "GID",
+        no_short
+    )]
+    setgid: i32,
+
+    #[options(
+        help = "set process group (0 to become leader)",
+        meta = "PGID",
+        no_short
+    )]
+    setpgid: Option<i32>,
+
+    #[options(help = "run program in a new session", no_short)]
+    setsid: bool,
+
+    #[options(help = "detach from /dev/tty", no_short)]
+    notty: bool,
+
+    #[options(
+        help = "deliver the signal when parent process exits",
+        default_expr = "Signal::SIGKILL",
+        no_short,
+        parse(try_from_str = "signal_from_str")
+    )]
+    deathsig: Signal,
+
+    #[options(help = "program arguments to execute", free)]
+    program: Vec<String>,
 }
 
 fn env_to_kv(arg: &str) -> (&str, &str) {
@@ -142,88 +178,171 @@ fn env_to_kv(arg: &str) -> (&str, &str) {
     (arg, &arg[arg.len()..arg.len()])
 }
 
-fn command_exec(matches: &ArgMatches) -> Result<i32, std::io::Error> {
-    let program: Vec<&str> = match matches.values_of("program") {
-        Some(p) => p.collect(),
-        None => {
-            return Ok(0);
-        }
-    };
+fn command_exec(arg: &ExecCommand) -> Result<i32> {
+    if arg.program.is_empty() {
+        return Ok(0);
+    }
 
-    let connect = matches.value_of("connect").expect("socket path is missing");
-    let socketpath = std::path::PathBuf::from_str(connect).unwrap();
-    let envs: Vec<_> = if let Some(values) = matches.values_of("env") {
-        values.map(env_to_kv).collect()
-    } else {
-        Vec::new()
-    };
-    let workdir = matches.value_of("workdir");
-    let setpgid = matches.is_present("setpgid");
-    let setsid = matches.is_present("setsid");
-    let ctty = matches.is_present("ctty");
+    if arg.connect.as_os_str().is_empty() {
+        return command_exec_local(&arg);
+    }
+
+    system::disable_inherit_stdio()?;
+
+    // let program: &str = &arg.program[0];
+    let args: Vec<&str> =
+        arg.program[1..].iter().map(|s| s.as_ref()).collect();
+    let envs: Vec<_> = arg.env.iter().map(|s| env_to_kv(&s)).collect();
 
     client::command(&client::Args {
-        connect: socketpath.as_path(),
-        program: program.as_slice(),
-        env: &envs,
-        cwd: workdir,
-        setpgid,
-        setsid,
-        ctty,
+        program: &arg.program[0],
+        args: args.as_slice(),
+        env: envs.as_slice(),
+        cwd: &arg.workdir,
+        connect: arg.connect.as_path(),
+        uid: arg.setuid,
+        gid: arg.setgid,
+        deathsig: arg.deathsig as i32,
+        setpgid: arg.setpgid,
+        setsid: arg.setsid,
+        notty: arg.notty,
     })
 }
 
-fn command_server(matches: &ArgMatches) -> Result<(), std::io::Error> {
-    let connect = matches.value_of("path").unwrap();
-    let sockpath = std::path::PathBuf::from_str(connect).unwrap();
+fn command_exec_local(arg: &ExecCommand) -> Result<i32> {
+    use crate::messages::{Files, ProcessRequest, StartMode};
 
-    if matches.is_present("parents") {
-        if let Some(parent) = sockpath.parent() {
-            std::fs::create_dir_all(parent)?;
+    if arg.program.is_empty() {
+        return Ok(0);
+    }
+
+    let args: Vec<&str> =
+        arg.program[1..].iter().map(|s| s.as_ref()).collect();
+    let envs: Vec<_> = arg.env.iter().map(|s| env_to_kv(&s)).collect();
+
+    let mut startup = StartMode::empty();
+    let pgid = match arg.setpgid {
+        Some(id) => {
+            startup |= StartMode::PROCESS_GROUP;
+            id
+        }
+        None => 0,
+    };
+
+    if arg.setsid {
+        startup |= StartMode::SESSION;
+    }
+
+    if arg.notty {
+        startup |= StartMode::DETACH_TERMINAL;
+    }
+
+    let req = ProcessRequest {
+        program: &arg.program[0],
+        argv: &args,
+        cwd: &arg.workdir,
+        env: &envs,
+        startup: startup,
+        io: Files::all(),
+        pgid: pgid,
+        uid: arg.setuid,
+        gid: arg.setgid,
+        deathsig: arg.deathsig as i32,
+    };
+
+    Err(child::execute_into(&req))
+}
+
+fn command_start(arg: &StartCommand) -> i32 {
+    if let Err(e) = system::disable_inherit_stdio() {
+        error!("stdio CLOEXEC: {}", e);
+        return 1;
+    }
+
+    if arg.notty {
+        if let Err(e) = tty::disconnect_controlling_terminal() {
+            error!("notty(): {}", e);
+            return 1;
         }
     }
 
-    if matches.is_present("setpgid") {
-        info!("becoming process group leader");
-        system::new_process_group()?;
+    if let Some(pgid) = arg.setpgid {
+        let id = system::Pid::from_raw(pgid);
+        if let Err(e) = system::new_process_group(id) {
+            error!("setpgid({}): {}", pgid, e);
+            return 1;
+        }
     }
 
-    if matches.is_present("setsid") {
-        info!("becoming session leader");
-        system::new_session()?;
+    if arg.setsid {
+        if let Err(e) = system::new_session() {
+            error!("setsid() {}", e);
+            return 1;
+        }
     }
 
-    server::command(&server::Args {
-        server: sockpath.as_path(),
-    })?;
-    Ok(())
+    if arg.path.as_os_str().is_empty() {
+        return 0;
+    }
+
+    if arg.parents {
+        if let Some(parent) = arg.path.parent() {
+            if let Err(e) = std::fs::create_dir_all(parent) {
+                error!("mkdir({:?}) {}", parent, e);
+                return 1;
+            }
+        }
+    }
+
+    if let Some(uid) = arg.setuid {
+        if let Err(e) = nix::unistd::setuid(nix::unistd::Uid::from_raw(uid)) {
+            error!("setuid({}) {}", uid, raw::nixerror(e));
+            return 1;
+        }
+    }
+
+    if let Some(gid) = arg.setgid {
+        if let Err(e) = nix::unistd::setgid(nix::unistd::Gid::from_raw(gid)) {
+            error!("setgid({}) {}", gid, raw::nixerror(e));
+            return 1;
+        }
+    }
+
+    match server::command(&server::Args {
+        server: arg.path.as_path(),
+    }) {
+        Ok(code) => code,
+        Err(e) => {
+            error!("start() {}", e);
+            1
+        }
+    }
 }
 
-fn command_stop(matches: &ArgMatches) -> Result<(), std::io::Error> {
-    let connect = matches.value_of("path").unwrap();
-    let sockpath = std::path::PathBuf::from_str(connect).unwrap();
-
+fn command_stop(arg: &StopCommand) -> Result<i32> {
+    if arg.path.as_os_str().is_empty() {
+        return Ok(0);
+    }
     stop::command(&stop::Args {
-        connect: sockpath.as_path(),
-    })?;
-
-    Ok(())
+        connect: arg.path.as_path(),
+    })
 }
 
 struct Logger {
-    others: bool,
-    level: Level,
+    own: Level,
+    others: Level,
 }
 
 impl Log for Logger {
     fn enabled(&self, metadata: &log::Metadata) -> bool {
-        metadata.level() <= self.level
-            && (self.others || metadata.target().starts_with("sidecar"))
+        if metadata.target().starts_with("sidecar") {
+            metadata.level() <= self.own
+        } else {
+            metadata.level() <= self.others
+        }
     }
 
     fn log(&self, record: &log::Record) {
-        use std::io::Write;
-
         if !self.enabled(record.metadata()) {
             return;
         }
@@ -247,52 +366,129 @@ impl Log for Logger {
     }
 }
 
-fn configure_log(verbosity: u64) {
-    let filter: (bool, Level) = match verbosity {
-        0 => (false, Level::Info),
-        1 => (false, Level::Debug),
-        2 => (true, Level::Debug),
-        _ => (true, Level::Trace),
+fn configure_log(verbosity: u32) {
+    let filter: (Level, Level) = match verbosity {
+        0 => (Level::Warn, Level::Warn),
+        1 => (Level::Info, Level::Warn),
+        2 => (Level::Debug, Level::Info),
+        3 => (Level::Debug, Level::Debug),
+        _ => (Level::Trace, Level::Trace),
     };
 
     let logger = Logger {
-        others: filter.0,
-        level: filter.1,
+        own: filter.0,
+        others: filter.1,
     };
     log::set_boxed_logger(Box::new(logger)).unwrap();
-    log::set_max_level(filter.1.to_level_filter())
+    log::set_max_level(filter.0.to_level_filter())
+}
+
+fn usage_line(dest: &mut impl Write, name: &str, command: &str) -> Result<()> {
+    let line = match command {
+        "start" => "[OPTIONS] PATH",
+        "stop" => "PATH",
+        "exec" => "[OPTIONS] [PROGRAM [ARG]...]",
+        _ => "[OPTIONS] COMMAND",
+    };
+    writeln!(dest, "Usage: {} {}", name, line)
+}
+
+fn header_line(dest: &mut impl Write, command: &str) -> Result<()> {
+    if command.is_empty() {
+        write!(dest, "{} {}\n{}\n\n", NAME, VERSION, AUTHORS)
+    } else {
+        write!(dest, "{}-{} {}\n{}\n\n", NAME, command, VERSION, AUTHORS)
+    }
+}
+
+fn help(dest: &mut impl Write, name: &str, cli: &Cli) -> Result<()> {
+    match cli.command_name() {
+        None => {
+            usage_line(dest, name, "")?;
+            header_line(dest, "")?;
+            write!(dest, "{}\n\n{}\n", DESCRIPTION, Cli::usage())?;
+            if let Some(cmds) = Cli::command_list() {
+                writeln!(dest, "\nCommands:\n{}", cmds)
+            } else {
+                writeln!(dest)
+            }
+        }
+        Some(cmd) => {
+            usage_line(dest, name, cmd)?;
+            header_line(dest, cmd)?;
+            writeln!(dest, "{}", Cli::command_usage(cmd).unwrap_or_default())
+        }
+    }
 }
 
 fn run() -> i32 {
-    let matches = configure_arguments().get_matches();
-    let verbosity = matches.occurrences_of("verbosity");
-    configure_log(verbosity);
+    let args = std::env::args().collect::<Vec<_>>();
+    let arg0 = &args[0];
 
-    match matches.subcommand() {
-        ("exec", Some(rest)) => match command_exec(rest) {
-            Ok(ret) => ret,
+    let cli = {
+        match Cli::parse_args(&args[1..], ParsingStyle::default()) {
+            Ok(val) => val,
             Err(err) => {
-                error!("failed to execute command {:?}", err);
-                128
+                eprintln!("{}: {}", arg0, err);
+                return 2;
+            }
+        }
+    };
+
+    if cli.version {
+        println!("{}", VERSION);
+        return 0;
+    }
+
+    if cli.help_requested() {
+        let _ = help(&mut std::io::stdout().lock(), &arg0, &cli);
+        return 0;
+    }
+
+    let mut verbose = cli.verbose;
+    match cli.command {
+        Some(cmd) => match cmd {
+            Command::Start(ref arg) => {
+                verbose += arg.verbose;
+                configure_log(verbose);
+                command_start(arg)
+            }
+            Command::Stop(ref arg) => {
+                verbose += arg.verbose;
+                configure_log(verbose);
+                match command_stop(arg) {
+                    Ok(code) => code,
+                    Err(err) => {
+                        error!("{}: failed to stop server\n{}", arg0, err);
+                        1
+                    }
+                }
+            }
+            Command::Exec(ref arg) => {
+                verbose += arg.verbose;
+                configure_log(verbose);
+                match command_exec(arg) {
+                    Ok(ret) => ret,
+                    Err(err) => {
+                        error!(
+                            "{}: failed to execute command: \"{}\"\n{}",
+                            arg0,
+                            arg.program
+                                .get(0)
+                                .map(|s| s.as_str())
+                                .unwrap_or(""),
+                            err
+                        );
+                        128
+                    }
+                }
             }
         },
-        ("start", Some(rest)) => match command_server(rest) {
-            Ok(()) => 0,
-            Err(err) => {
-                error!("failed to spawn server {:?}", err);
-                1
-            }
-        },
-        ("stop", Some(rest)) => match command_stop(rest) {
-            Ok(()) => 0,
-            Err(err) => {
-                error!("failed to stop server {:?}", err);
-                1
-            }
-        },
-        (some, maybe_rest) => {
-            error!("unknown command {:?} -- {:?}", some, maybe_rest);
-            -1
+        None => {
+            let stream = std::io::stderr();
+            let mut stderr = stream.lock();
+            let _ = writeln!(&mut stderr, "{}: missing command", arg0);
+            0
         }
     }
 }

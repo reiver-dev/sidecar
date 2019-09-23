@@ -1,73 +1,105 @@
 use log::{error, warn};
-use nix::libc::{ioctl, STDIN_FILENO, TIOCSCTTY};
-use nix::sys::signal::{kill as _kill, raise as _raise};
-use nix::unistd::{setpgid, setsid, Pid};
+use nix::errno::Errno;
+use nix::sys::signal::{kill as _kill, killpg as _killpg, raise as _raise};
+use nix::unistd::{setpgid, setsid};
 use nix::Error as NixError;
-use std::io::{Error, Result};
+use std::io::Error as IoError;
 
+use crate::raw;
+use crate::raw::nixerror as error;
 pub(crate) use nix::sys::signal::Signal::{self, *};
+pub(crate) use nix::unistd::Pid;
 
-fn error(err: NixError) -> Error {
-    match err {
-        NixError::Sys(val) => val.into(),
-        _ => unreachable!(),
-    }
+#[cfg(target_os = "linux")]
+fn prctl(
+    option: libc::c_int,
+    arg2: libc::c_ulong,
+    arg3: libc::c_ulong,
+    arg4: libc::c_ulong,
+    arg5: libc::c_ulong,
+) -> Result<(), IoError> {
+    let res = unsafe { libc::prctl(option, arg2, arg3, arg4, arg5) };
+    Errno::result(res).map(drop).map_err(error)
 }
 
-pub(crate) fn raise(sig: Signal) -> Result<()> {
+#[cfg(target_os = "linux")]
+pub(crate) fn set_death_signal(sig: Signal) -> Result<(), IoError> {
+    const PR_SET_PDEATHSIG: libc::c_int = 1;
+    let sigval = sig as libc::c_ulong;
+    prctl(PR_SET_PDEATHSIG, sigval, 0, 0, 0)
+}
+
+pub(crate) fn signal_from_str(text: &str) -> Result<Signal, IoError> {
+    match text.parse::<u32>() {
+        Ok(signum) => Signal::from_c_int(signum as libc::c_int),
+        Err(_) => text.parse::<Signal>(),
+    }
+    .map_err(error)
+}
+
+pub(crate) fn raise(sig: Signal) -> Result<(), IoError> {
     _raise(sig).map_err(error)
 }
 
-pub(crate) fn set_controlling_terminal() -> Result<()> {
-    if unsafe { ioctl(STDIN_FILENO, TIOCSCTTY, 0) } != 0 {
-        Err(Error::last_os_error())
-    } else {
-        Ok(())
-    }
+pub(crate) fn new_process_group(id: Pid) -> Result<(), IoError> {
+    setpgid(Pid::from_raw(0), id).map_err(error)
 }
 
-pub(crate) fn new_process_group() -> Result<()> {
-    setpgid(Pid::from_raw(0), Pid::from_raw(0)).map_err(error)
-}
-
-pub(crate) fn new_session() -> Result<()> {
+pub(crate) fn new_session() -> Result<(), IoError> {
     setsid().map(|_| ()).map_err(error)
 }
 
-pub(crate) fn kill(child: u32, signal: Signal) {
-    let pid = Pid::from_raw(child as i32);
-    if let Err(err) = _kill(pid, signal) {
-        error!("failed to send signal to process={:?} err={:?}", pid, err)
+pub(crate) fn nohup() -> Result<(), IoError> {
+    match unsafe { libc::signal(libc::SIGHUP, libc::SIG_IGN) } {
+        libc::SIG_ERR => Err(IoError::last_os_error()),
+        _ => Ok(()),
     }
 }
 
-pub(crate) fn killpg(child: u32, signal: Signal) {
-    use nix::{errno::Errno, Error::Sys};
+pub(crate) fn kill(child: Pid, signal: Signal) {
+    if let Err(err) = _kill(child, signal) {
+        error!(
+            "failed to send signal to process={:?} err={:?}",
+            child.as_raw(),
+            err
+        )
+    }
+}
 
-    let pid = Pid::from_raw(child as i32);
-    // On Linux, killpg() is implemented as a library function that makes
-    // the call kill(-pgrp, sig).
-    let pg = Pid::from_raw(-(child as i32));
-
-    match _kill(pg, signal) {
-        Err(Sys(Errno::ESRCH)) => {
+pub(crate) fn killpg(child: Pid, signal: Signal) {
+    match _killpg(child, signal) {
+        Err(NixError::Sys(Errno::ESRCH)) => {
             warn!(
                 "failed to send signal to group process={:?} no such group",
-                pid
+                child.as_raw()
             );
-            if let Err(err) = _kill(pid, signal) {
+            if let Err(err) = _kill(child, signal) {
                 error!(
                     "failed to send signal to process={:?} err={:?}",
-                    pid, err
+                    child.as_raw(),
+                    err
                 );
             }
         }
         Err(err) => {
             warn!(
-                "failed to send signal to group process={:?} err={:?}",
-                pid, err
+                "failed to send signal to group process={:?} err={}",
+                child.as_raw(),
+                err
             );
         }
         _ => (),
     };
+}
+
+pub(crate) fn is_valid_fd(fd: raw::RawFd) -> bool {
+    let ret = unsafe { libc::fcntl(fd, libc::F_GETFD) };
+    ret != -1 || nix::errno::errno() != libc::EBADF
+}
+
+pub(crate) fn disable_inherit_stdio() -> Result<(), IoError> {
+    for fd in &[libc::STDIN_FILENO, libc::STDOUT_FILENO, libc::STDERR_FILENO] {
+        raw::flags::set_cloexec(*fd)?;
+    }
+    Ok(())
 }
