@@ -2,18 +2,18 @@ use std::io::Result;
 use std::path::Path;
 use std::process::ExitStatus;
 
-use futures_util::future::{select, Either, FutureExt};
-use futures_util::stream::{select as stream_select, StreamExt};
+use futures::future::{select, Either, FutureExt};
+use futures::stream::{select as stream_select, StreamExt};
 
 use log::{debug, error, info, warn};
 use scopeguard::defer;
-use tokio_net::signal::unix::{signal, SignalKind};
+use tokio::signal::unix::{signal, SignalKind};
 
 use crate::child::setup_command;
 use crate::child_watcher::{self, Child};
 use crate::messages as msg;
-use crate::raw::{flags::set_cloexec, CmsgBuf, RawFd};
-use crate::runtime::{spawn, Runtime};
+use crate::raw::{blocking::bind, flags::set_cloexec, CmsgBuf, RawFd};
+use crate::runtime;
 use crate::socket::{Shutdown, Socket};
 use crate::system::{self, kill, killpg, Pid, Signal};
 
@@ -258,7 +258,9 @@ async fn listen(socket: Socket) {
         match res {
             Ok(sock) => {
                 info!("client connected");
-                spawn(Box::pin(handle_client(Socket::from_fd(sock))));
+                runtime::spawn(Box::pin(handle_client(
+                    Socket::from_fd(sock).unwrap(),
+                )));
             }
             Err(err) => {
                 error!("failed to accept connection {:?}", err);
@@ -285,7 +287,7 @@ pub(crate) fn command(args: &Args) -> Result<i32> {
         // FIXME:
         // mio 0.6 does not set wakup pipes as CLOEXEC
         let lvfd_before = first_invalid_fd(0, 16);
-        let runtime = Runtime::new()?;
+        let runtime = runtime::new()?;
         let lvfd_after = first_invalid_fd(lvfd_before, 16);
         for fd in lvfd_before..lvfd_after {
             set_cloexec(fd)?;
@@ -294,14 +296,8 @@ pub(crate) fn command(args: &Args) -> Result<i32> {
         runtime
     };
 
-    let sigint = signal(SignalKind::interrupt())?;
-    let sigterm = signal(SignalKind::terminate())?;
-    let sigchld = child_watcher::signal_queue()?;
-
     info!("server starting at {:?}", args.server);
-    let sock = Socket::bind(args.server)?;
-    info!("server started");
-
+    let fd = bind(args.server)?;
     defer!({
         debug!("removing server socket at {:?}", args.server);
         std::fs::remove_file(args.server).unwrap_or_else(|err| {
@@ -309,26 +305,35 @@ pub(crate) fn command(args: &Args) -> Result<i32> {
         })
     });
 
-    runtime.spawn(child_watcher::listen(sigchld));
-    runtime.spawn(listen(sock));
+    let res = runtime.block_on(async {
+        let sock = Socket::from_fd(fd)?;
+        info!("server started");
 
-    let res = match runtime.block_on(
-        stream_select(
+        let sigint = signal(SignalKind::interrupt())?;
+        let sigterm = signal(SignalKind::terminate())?;
+        let sigchld = child_watcher::signal_queue()?;
+
+        runtime::spawn(child_watcher::listen(sigchld));
+        runtime::spawn(listen(sock));
+
+        match stream_select(
             sigint.map(|()| Signal::SIGINT),
             sigterm.map(|()| Signal::SIGTERM),
         )
         .into_future()
-        .map(|(item, _rest)| item),
-    ) {
-        Some(sig) => {
-            info!("received signal {:?}", sig);
-            Ok(0)
+        .map(|(item, _rest)| item)
+        .await
+        {
+            Some(sig) => {
+                info!("received signal {:?}", sig);
+                Ok(0)
+            }
+            None => {
+                warn!("received no signal");
+                Ok(0)
+            }
         }
-        None => {
-            warn!("received no signal");
-            Ok(0)
-        }
-    };
+    });
 
     info!("server shutdown");
     res

@@ -37,10 +37,10 @@ impl<'a> Accept<'a> {
 
     #[cfg(not(target_os = "linux"))]
     fn do_next(&self, ctx: &mut Context<'_>) -> Poll<Option<IoResult<Fd>>> {
-        use super::flags::set_cloexec_nonblocking;
+        use super::flags::{set_cloexec, set_nonblock};
         match self.events.poll_read_maybe(ctx, |fd| _accept(fd)) {
             Poll::Ready(val) => Poll::Ready(Some(val.and_then(|fd| {
-                set_cloexec_nonblocking(fd.raw()).map(|_| fd)
+                set_cloexec(fd.raw()).and_then(|| set_nonblock(fd.raw()))
             }))),
             Poll::Pending => Poll::Pending,
         }

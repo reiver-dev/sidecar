@@ -59,11 +59,11 @@ pub fn make_pipe() -> Result<(PipeRead, PipeWrite)> {
     let (r, w) = make_pipe_fds()?;
 
     let pread = PipeRead {
-        inner: Events::from_fd(r),
+        inner: Events::from_fd(r)?,
     };
 
     let pwrite = PipeWrite {
-        inner: Events::from_fd(w),
+        inner: Events::from_fd(w)?,
     };
 
     Ok((pread, pwrite))

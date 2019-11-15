@@ -6,7 +6,7 @@ use futures::ready;
 use mio::Ready;
 use nix::errno::EWOULDBLOCK;
 use nix::{Error as NixError, Result as NixResult};
-use tokio_net::util::PollEvented;
+use tokio::net::util::PollEvented;
 
 use super::nixerror;
 use super::Fd;
@@ -22,19 +22,11 @@ impl AsRawFd for Events {
     }
 }
 
-impl FromRawFd for Events {
-    unsafe fn from_raw_fd(fd: RawFd) -> Self {
-        Events {
-            io: PollEvented::new(Fd::from_raw_fd(fd)),
-        }
-    }
-}
-
 impl Events {
-    pub fn from_fd(fd: Fd) -> Self {
-        Self {
-            io: PollEvented::new(fd),
-        }
+    pub fn from_fd(fd: Fd) -> Result<Self> {
+        Ok(Self {
+            io: PollEvented::new(fd)?,
+        })
     }
 
     pub fn poll_read_ready(

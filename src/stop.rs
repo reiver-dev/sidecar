@@ -1,11 +1,12 @@
 use std::io::Result;
 use std::path::Path;
 
-use futures_util::TryFutureExt;
+use futures::TryFutureExt;
 
 use log::{debug, error};
 
 use crate::messages as msg;
+use crate::raw::blocking::connect;
 use crate::runtime;
 use crate::socket::Socket;
 
@@ -26,8 +27,10 @@ async fn execute(socket: Socket) -> Result<()> {
 
 pub(crate) fn command(args: &Args) -> Result<i32> {
     debug!("connecting to {:?}", args.connect);
-    match Socket::connect(args.connect) {
-        Ok(socket) => runtime::start(execute(socket))?.map(|_| 0),
+    match connect(args.connect) {
+        Ok(fd) => runtime::new()?.block_on(async {
+            execute(Socket::from_fd(fd)?).await.map(|_| 0)
+        }),
         Err(err) => {
             error!(
                 "failed to connect\n    \

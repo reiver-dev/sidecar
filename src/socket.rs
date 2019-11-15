@@ -1,12 +1,9 @@
 use std::io::Result;
 pub use std::net::Shutdown;
-use std::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
-use std::path::Path;
+use std::os::unix::io::{AsRawFd, IntoRawFd, RawFd};
 
 use crate::raw;
-use nix::sys::socket::{
-    self, AddressFamily, MsgFlags, SockAddr, SockFlag, SockType,
-};
+use nix::sys::socket::{self, MsgFlags};
 
 #[derive(Debug)]
 pub struct Socket {
@@ -14,71 +11,10 @@ pub struct Socket {
 }
 
 impl Socket {
-    pub fn from_fd(fd: raw::Fd) -> Self {
-        Self {
-            inner: raw::Events::from_fd(fd),
-        }
-    }
-
-    #[cfg(not(target_os = "linux"))]
-    fn new(blocking: bool) -> Result<Socket> {
-        let fd = socket::socket(
-            AddressFamily::Unix,
-            SockType::SeqPacket,
-            SockFlag::empty(),
-            None,
-        )
-        .map_err(raw::nixerror)?;
-        let fd1 = raw::Fd::new(fd);
-        if blocking {
-            raw::flags::set_cloexec_blocking(fd)?;
-        } else {
-            raw::flags::set_cloexec_nonblocking(fd)?;
-        }
-        Ok(Self::from_fd(fd1))
-    }
-
-    #[cfg(target_os = "linux")]
-    fn new(blocking: bool) -> Result<Socket> {
-        let flags = if blocking {
-            SockFlag::SOCK_CLOEXEC
-        } else {
-            SockFlag::SOCK_CLOEXEC | SockFlag::SOCK_NONBLOCK
-        };
-
-        socket::socket(AddressFamily::Unix, SockType::SeqPacket, flags, None)
-            .map(|fd| unsafe { Socket::from_raw_fd(fd) })
-            .map_err(raw::nixerror)
-    }
-
-    pub fn bind<P: AsRef<Path>>(path: P) -> Result<Socket> {
-        SockAddr::new_unix(path.as_ref())
-            .map_err(raw::nixerror)
-            .and_then(|addr| Socket::new(false).map(|fd| (fd, addr)))
-            .and_then(|(fd, addr)| {
-                socket::bind(fd.as_raw_fd(), &addr)
-                    .map(|_| fd)
-                    .map_err(raw::nixerror)
-            })
-            .and_then(|fd| {
-                socket::listen(fd.as_raw_fd(), 0)
-                    .map(|_| fd)
-                    .map_err(raw::nixerror)
-            })
-    }
-
-    pub fn connect<P: AsRef<Path>>(path: P) -> Result<Socket> {
-        SockAddr::new_unix(path.as_ref())
-            .map_err(raw::nixerror)
-            .and_then(|addr| Socket::new(true).map(|fd| (fd, addr)))
-            .and_then(|(fd, addr)| {
-                socket::connect(fd.inner.as_raw_fd(), &addr)
-                    .map(|_| fd)
-                    .map_err(raw::nixerror)
-            })
-            .and_then(|fd| {
-                raw::flags::set_cloexec_nonblocking(fd.as_raw_fd()).map(|_| fd)
-            })
+    pub fn from_fd(fd: raw::Fd) -> Result<Self> {
+        Ok(Self {
+            inner: raw::Events::from_fd(fd)?,
+        })
     }
 
     #[cfg(target_os = "linux")]
@@ -147,13 +83,5 @@ impl AsRawFd for Socket {
 impl IntoRawFd for Socket {
     fn into_raw_fd(self) -> i32 {
         self.as_raw_fd()
-    }
-}
-
-impl FromRawFd for Socket {
-    unsafe fn from_raw_fd(fd: i32) -> Socket {
-        Socket {
-            inner: raw::Events::from_raw_fd(fd),
-        }
     }
 }

@@ -23,18 +23,15 @@ scopeguard = "1"
 lazy_static = "*"
 serde = { version = "1", features = ["derive"] }
 bincode = "1.0"
-futures-preview = { version = "=0.3.0-alpha.18" }
-futures-util-preview  = { version = "=0.3.0-alpha.18" }
+futures = { version = "0.3" }
 mio = { version = "0.6", default-features = false }
 mio-uds = "*"
 signal-hook-registry = "*"
-tokio-io = { version = "0.2.0-alpha.5", default-features = false }
-tokio-net = { version = "0.2.0-alpha.5", default-features = false, features = ["signal"] }
-tokio-executor = { version = "0.2.0-alpha.5", default-features = false, features = ["current-thread"] }
-tokio-timer = { version = "0.3.0-alpha.5", default-features = false }
+
+[dependencies."tokio"]
+version = "0.2.0-alpha.6"
+default-features = false
+features = ["rt-core", "io-driver", "signal"]
 
 [patch."crates-io"]
-tokio-net = { git = "https://github.com/tokio-rs/tokio", branch = "master" }
-tokio-io = { git = "https://github.com/tokio-rs/tokio", branch = "master" }
-tokio-executor = { git = "https://github.com/tokio-rs/tokio", branch = "master" }
-tokio-timer = { git = "https://github.com/tokio-rs/tokio", branch = "master" }
+tokio = { git = "https://github.com/tokio-rs/tokio", branch = "master" }

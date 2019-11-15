@@ -3,7 +3,8 @@ use std::io::Result;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-use nix::sys::socket::{self, MsgFlags};
+use nix::sys::socket;
+pub use nix::sys::socket::MsgFlags;
 use nix::unistd;
 
 use super::reactor::Events;

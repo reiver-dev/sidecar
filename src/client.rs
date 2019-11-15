@@ -5,9 +5,10 @@ use std::path::Path;
 
 use nix::sys::signal::{raise, Signal};
 
-use futures_util::future::{select, Either};
+use futures::future::{select, Either};
 
 use crate::messages as msg;
+use crate::raw::blocking::connect;
 use crate::runtime;
 use crate::signals;
 use crate::socket::Socket;
@@ -217,14 +218,13 @@ async fn execute(
 
 pub(crate) fn command(args: &Args) -> Result<i32> {
     let request = prepare_request(args);
-
     debug!("connecting to {:?}", args.connect);
-    match Socket::connect(args.connect) {
-        Ok(socket) => {
-            let ret = runtime::start(execute(&request, socket))?;
+    match connect(args.connect) {
+        Ok(fd) => runtime::new()?.block_on(async {
+            let ret = execute(&request, Socket::from_fd(fd)?).await?;
             debug!("finished with code {:?}", ret);
-            ret
-        }
+            Ok(ret)
+        }),
         Err(err) => {
             error!(
                 "failed to connect\n    \

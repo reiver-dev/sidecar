@@ -23,6 +23,7 @@ impl ThreadCancelGuard {
         ThreadCancelGuard { cancel_state }
     }
 
+    #[allow(dead_code)]
     fn state(&self) -> i32 {
         self.cancel_state
     }
@@ -58,6 +59,7 @@ impl ThreadSignalGuard {
         }
     }
 
+    #[allow(dead_code)]
     pub fn mask(&self) -> libc::sigset_t {
         self.sigmask
     }
@@ -88,10 +90,12 @@ impl ThreadGuard {
         }
     }
 
+    #[allow(dead_code)]
     pub fn cancel_state(&self) -> i32 {
         self.cancel_state.state()
     }
 
+    #[allow(dead_code)]
     pub fn signal_mask(&self) -> libc::sigset_t {
         self.sigmask.mask()
     }

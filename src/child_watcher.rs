@@ -11,9 +11,9 @@ use std::task::{Context, Poll};
 use futures::StreamExt;
 use lazy_static::lazy_static;
 use mio_uds::UnixStream;
-use tokio_io::AsyncRead;
-use tokio_net::signal::unix::{signal, Signal, SignalKind};
-use tokio_net::util::PollEvented;
+use tokio::io::AsyncRead;
+use tokio::net::util::PollEvented;
+use tokio::signal::unix::{signal, Signal, SignalKind};
 
 use nix::errno::Errno;
 
@@ -65,7 +65,7 @@ impl Child {
     pub fn from_id(pid: i32) -> Child {
         Child {
             pid: pid,
-            event: PollEvented::new(watchers().register(pid)),
+            event: (PollEvented::new(watchers().register(pid)).unwrap()),
         }
     }
 
