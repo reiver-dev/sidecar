@@ -48,7 +48,7 @@ impl<'a> Accept<'a> {
 
     #[cfg(target_os = "linux")]
     fn do_next(&self, ctx: &mut Context<'_>) -> Poll<Option<IoResult<Fd>>> {
-        match self.events.poll_read_maybe(ctx, |fd| _accept(fd)) {
+        match self.events.poll_read_maybe(ctx, _accept) {
             Poll::Ready(val) => Poll::Ready(Some(val)),
             Poll::Pending => Poll::Pending,
         }

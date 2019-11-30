@@ -6,7 +6,7 @@ use futures::ready;
 use mio::Ready;
 use nix::errno::EWOULDBLOCK;
 use nix::{Error as NixError, Result as NixResult};
-use tokio::net::util::PollEvented;
+use tokio::io::PollEvented;
 
 use super::nixerror;
 use super::Fd;

@@ -2,8 +2,11 @@ use std::io::Result;
 use std::path::Path;
 use std::process::ExitStatus;
 
-use futures::future::{select, Either, FutureExt};
-use futures::stream::{select as stream_select, StreamExt};
+use futures::{
+    future::{select, Either, FutureExt},
+    pin_mut,
+    stream::StreamExt,
+};
 
 use log::{debug, error, info, warn};
 use scopeguard::defer;
@@ -160,7 +163,7 @@ async fn client_session(sock: Socket) -> Result<()> {
             debug!("requested `stop`");
             system::raise(Signal::SIGINT)
                 .expect("failed to send SIGINT to self");
-            return Ok(());
+            Ok(())
         }
         msg::RequestOutput::Exec(header) => {
             debug!("requested `exec`");
@@ -305,25 +308,32 @@ pub(crate) fn command(args: &Args) -> Result<i32> {
         })
     });
 
+    debug!("runtime starting");
     let res = runtime.block_on(async {
-        let sock = Socket::from_fd(fd)?;
         info!("server started");
 
-        let sigint = signal(SignalKind::interrupt())?;
-        let sigterm = signal(SignalKind::terminate())?;
+        let sock = Socket::from_fd(fd)?;
+        let mut sigint = signal(SignalKind::interrupt())?;
+        let mut sigterm = signal(SignalKind::terminate())?;
         let sigchld = child_watcher::signal_queue()?;
 
         runtime::spawn(child_watcher::listen(sigchld));
         runtime::spawn(listen(sock));
 
-        match stream_select(
-            sigint.map(|()| Signal::SIGINT),
-            sigterm.map(|()| Signal::SIGTERM),
-        )
-        .into_future()
-        .map(|(item, _rest)| item)
-        .await
-        {
+        let si = sigint.recv();
+        let st = sigterm.recv();
+        pin_mut!(si, st);
+
+        let received = select(si, st).map(|either| {
+            use futures::future::Either::*;
+            match either {
+                Left((Some(_), _)) => Some(Signal::SIGINT),
+                Right((Some(_), _)) => Some(Signal::SIGTERM),
+                _ => None,
+            }
+        });
+
+        match received.await {
             Some(sig) => {
                 info!("received signal {:?}", sig);
                 Ok(0)

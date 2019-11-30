@@ -29,9 +29,6 @@ mio-uds = "*"
 signal-hook-registry = "*"
 
 [dependencies."tokio"]
-version = "0.2.0-alpha.6"
+version = "0.2"
 default-features = false
 features = ["rt-core", "io-driver", "signal"]
-
-[patch."crates-io"]
-tokio = { git = "https://github.com/tokio-rs/tokio", branch = "master" }

@@ -8,11 +8,10 @@ use std::process::{Command, ExitStatus};
 use std::sync::Mutex;
 use std::task::{Context, Poll};
 
-use futures::StreamExt;
 use lazy_static::lazy_static;
 use mio_uds::UnixStream;
 use tokio::io::AsyncRead;
-use tokio::net::util::PollEvented;
+use tokio::io::PollEvented;
 use tokio::signal::unix::{signal, Signal, SignalKind};
 
 use nix::errno::Errno;
@@ -128,9 +127,7 @@ pub fn spawn(mut command: Command) -> Result<Child> {
 pub async fn listen(mut sig: Signal) {
     let w = watchers();
 
-    while let (Some(()), _sig) = sig.into_future().await {
-        sig = _sig;
-
+    while let Some(()) = sig.recv().await {
         loop {
             let mut status: libc::c_int = 0;
 
